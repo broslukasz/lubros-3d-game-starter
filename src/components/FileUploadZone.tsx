@@ -1,13 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Upload, CheckCircle, AlertCircle, RefreshCw, Sparkles, Link as LinkIcon, Globe } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, RefreshCw, Link as LinkIcon, Globe } from 'lucide-react';
 import { ModelStats } from '../types/three-app.ts';
 import { formatShortFileName } from '../utils/formatFileName.ts';
 
 interface FileUploadZoneProps {
   onFileSelected: (file: File) => void;
   onUrlSelected?: (url: string) => Promise<void>;
-  onLoadSample?: () => void;
-  onResetToDemo?: () => void;
   isCustomDefault?: boolean;
   currentStats: ModelStats | null;
   isLoading: boolean;
@@ -38,8 +36,6 @@ function normalizeDirectDownloadUrl(rawUrl: string): string {
 export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
   onFileSelected,
   onUrlSelected,
-  onLoadSample,
-  onResetToDemo,
   isCustomDefault,
   currentStats,
   isLoading,
@@ -169,18 +165,6 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {isCustomDefault && onResetToDemo && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onResetToDemo();
-                  }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
-                >
-                  Przywróć demo
-                </button>
-              )}
               <button
                 type="button"
                 onClick={(e) => {
@@ -224,20 +208,6 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
                 <Globe className="w-3.5 h-3.5 text-cyan-400" />
                 Wczytaj z linku (URL)
               </button>
-
-              {onLoadSample && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLoadSample();
-                  }}
-                  className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                  Testowy model demo
-                </button>
-              )}
             </div>
           </div>
         )}

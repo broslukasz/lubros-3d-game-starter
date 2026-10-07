@@ -45,6 +45,21 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
     }
   };
 
+  // Immediate debounced jump trigger for reliable multitouch while running
+  const lastJumpTimeRef = useRef<number>(0);
+  const triggerJumpAction = useCallback(() => {
+    const now = Date.now();
+    if (now - lastJumpTimeRef.current < 120) return;
+    lastJumpTimeRef.current = now;
+    triggerHaptic(40);
+    onJump();
+  }, [onJump]);
+
+  const triggerSprintAction = useCallback(() => {
+    triggerHaptic(20);
+    onToggleSprint();
+  }, [onToggleSprint]);
+
   // 1. Touch start on Joystick
   const handleJoystickTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
@@ -205,26 +220,31 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
         </div>
 
         {/* Right: Sprint Toggle + Large Multitouch Jump Button */}
-        <div className="pointer-events-auto z-30 flex flex-col items-end gap-3 pr-2 select-none" style={{ touchAction: 'manipulation' }}>
+        <div className="pointer-events-auto z-30 flex flex-col items-end gap-3 pr-2 select-none" style={{ touchAction: 'none' }}>
           {/* Sprint Toggle */}
           <button
             type="button"
             onTouchStart={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              triggerHaptic(20);
-              onToggleSprint();
+              triggerSprintAction();
+            }}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'mouse') return;
+              e.preventDefault();
+              e.stopPropagation();
+              triggerSprintAction();
             }}
             onClick={(e) => {
               e.preventDefault();
-              triggerHaptic(20);
-              onToggleSprint();
+              triggerSprintAction();
             }}
-            className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold text-xs shadow-xl transition-all border active:scale-95 ${
+            className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold text-xs shadow-xl transition-all border active:scale-95 touch-none select-none cursor-pointer ${
               isSprinting
                 ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/40 scale-105'
                 : 'bg-slate-950/85 backdrop-blur-md text-slate-300 border-slate-700 hover:bg-slate-900'
             }`}
+            style={{ touchAction: 'none' }}
           >
             <Zap className={`w-5 h-5 ${isSprinting ? 'fill-current' : 'text-amber-400'}`} />
             <span className="text-[9px] mt-0.5 uppercase tracking-tighter font-extrabold">Bieg</span>
@@ -236,15 +256,20 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
             onTouchStart={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              triggerHaptic(40);
-              onJump();
+              triggerJumpAction();
+            }}
+            onPointerDown={(e) => {
+              if (e.pointerType === 'mouse') return;
+              e.preventDefault();
+              e.stopPropagation();
+              triggerJumpAction();
             }}
             onClick={(e) => {
               e.preventDefault();
-              triggerHaptic(40);
-              onJump();
+              triggerJumpAction();
             }}
-            className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 text-slate-950 font-black shadow-2xl shadow-cyan-500/50 border-2 border-cyan-200 flex flex-col items-center justify-center active:scale-90 transition-transform"
+            className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 text-slate-950 font-black shadow-2xl shadow-cyan-500/50 border-2 border-cyan-200 flex flex-col items-center justify-center active:scale-90 transition-transform touch-none select-none cursor-pointer"
+            style={{ touchAction: 'none' }}
           >
             <ArrowBigUp className="w-8 h-8 fill-current text-slate-950" />
             <span className="text-[11px] uppercase tracking-wider font-black -mt-1 text-slate-950">

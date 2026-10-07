@@ -66,6 +66,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
   const verticalVelocityRef = useRef<number>(0);
   const isGroundedRef = useRef<boolean>(true);
   const lastGroundedTimeRef = useRef<number>(0);
+  const jumpGraceTimerRef = useRef<number>(0); // Upward jump ascent grace window
   const cameraYawRef = useRef<number>(0); // Horizontal camera rotation
   const cameraPitchRef = useRef<number>(0.25); // Vertical camera tilt
 
@@ -120,12 +121,33 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
     };
   }, []);
 
-  // Jump action with responsive coyote-time window during running
+  // Jump action with responsive coyote-time and slope-tolerance during running
   const handleJump = useCallback(() => {
+    const px = playerPosRef.current.x;
+    const pz = playerPosRef.current.z;
+    const terrainHeight = getTerrainHeight(px, pz);
+    const { obstacleGroundY } = resolveObstacleCollisions(
+      px,
+      pz,
+      playerPosRef.current.y,
+      characterRadiusRef.current
+    );
+    const effectiveGround = Math.max(terrainHeight, obstacleGroundY);
+    const distToGround = playerPosRef.current.y - effectiveGround;
     const now = clockRef.current.getElapsedTime();
-    const canJump = isGroundedRef.current || (now - lastGroundedTimeRef.current < 0.22);
+
+    // Player can jump if:
+    // 1. Currently grounded
+    // 2. Coyote-time window (350ms after stepping off an elevation)
+    // 3. Or close to ground (< 0.75m) and not already moving upwards rapidly
+    const canJump =
+      isGroundedRef.current ||
+      (now - lastGroundedTimeRef.current < 0.35) ||
+      (distToGround < 0.75 && verticalVelocityRef.current <= 2.0);
+
     if (canJump) {
-      verticalVelocityRef.current = 10.0; // Jump upward impulse
+      verticalVelocityRef.current = 11.5; // Jump upward impulse
+      jumpGraceTimerRef.current = 0.28; // Upward ascent window where ground snapping is bypassed
       isGroundedRef.current = false;
       lastGroundedTimeRef.current = 0;
     }
@@ -142,6 +164,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
     const startY = getTerrainHeight(0, 0);
     playerPosRef.current.set(0, startY, 0);
     verticalVelocityRef.current = 0;
+    jumpGraceTimerRef.current = 0;
     isGroundedRef.current = true;
     cameraYawRef.current = 0;
     cameraPitchRef.current = 0.25;
@@ -330,8 +353,8 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
           const targetAngle = Math.atan2(moveDir.x, moveDir.z);
           characterRoot.rotation.y = lerpAngle(characterRoot.rotation.y, targetAngle, 0.2);
 
-          // Stride bobbing: only applied if model has NO skeletal animation
-          if (!animControllerRef.current.hasAnimations) {
+          // Stride bobbing: only applied if model has NO skeletal animation AND is grounded
+          if (!animControllerRef.current.hasAnimations && isGroundedRef.current) {
             const bobFreq = isSprintingRef.current ? 16 : 10;
             bob = Math.abs(Math.sin(clockRef.current.getElapsedTime() * bobFreq)) * 0.08;
             characterRoot.rotation.z = Math.sin(clockRef.current.getElapsedTime() * bobFreq) * 0.03;
@@ -376,12 +399,26 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
         );
         const effectiveGround = Math.max(terrainHeight, obstacleGroundY);
 
-        if (playerPosRef.current.y <= effectiveGround + 0.08) {
-          playerPosRef.current.y = effectiveGround;
-          verticalVelocityRef.current = 0;
-          isGroundedRef.current = true;
-          lastGroundedTimeRef.current = clockRef.current.getElapsedTime();
+        if (jumpGraceTimerRef.current > 0) {
+          // Actively ascending in jump: never snap to ground, keep momentum
+          jumpGraceTimerRef.current -= delta;
+          isGroundedRef.current = false;
+        } else if (verticalVelocityRef.current <= 0) {
+          // Downward motion or running along ground:
+          const distToGround = playerPosRef.current.y - effectiveGround;
+          // While running/walking, provide slope-adherence tolerance up to 0.55m so player stays grounded during run
+          const groundSnapTolerance = isMoving ? 0.55 : 0.12;
+
+          if (distToGround <= groundSnapTolerance || playerPosRef.current.y <= effectiveGround) {
+            playerPosRef.current.y = effectiveGround;
+            verticalVelocityRef.current = 0;
+            isGroundedRef.current = true;
+            lastGroundedTimeRef.current = clockRef.current.getElapsedTime();
+          } else {
+            isGroundedRef.current = false;
+          }
         } else {
+          // Ascending above grace window
           isGroundedRef.current = false;
         }
 
