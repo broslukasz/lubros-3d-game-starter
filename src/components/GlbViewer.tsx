@@ -8,12 +8,13 @@ import {
   Camera,
   Layers,
   Gamepad2,
-  Sun,
   Film,
+  Box,
 } from 'lucide-react';
 import { getTerrainHeight, buildNatureEnvironment, resolveObstacleCollisions } from '../utils/terrainBuilder.ts';
 import { VirtualJoystick, JoystickVector } from './VirtualJoystick.tsx';
 import { CharacterAnimationController, AnimationDetectionInfo } from '../utils/characterAnimation.ts';
+import { formatShortFileName } from '../utils/formatFileName.ts';
 
 interface GlbViewerProps {
   gltfData: GLTF | null;
@@ -563,7 +564,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
     try {
       const dataUrl = rendererRef.current.domElement.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `${fileName.replace(/\.[^/.]+$/, '')}_zachod_slonca.png`;
+      link.download = `${fileName.replace(/\.[^/.]+$/, '')}_screenshot.png`;
       link.href = dataUrl;
       link.click();
     } catch (e) {
@@ -607,14 +608,14 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
         <div className="absolute top-2.5 sm:top-3 left-2.5 sm:left-3 right-2.5 sm:right-3 flex items-center justify-between pointer-events-none z-30 gap-2">
           {/* Left Badges (Compacts gracefully on mobile) */}
           <div className="flex items-center gap-1.5 pointer-events-auto min-w-0 shrink overflow-hidden">
-            {/* Model Name & Landscape Badge */}
-            <div className="bg-slate-950/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-amber-500/40 shadow-lg text-xs text-slate-200 flex items-center gap-1.5 shrink min-w-0">
-              <Sun className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
-              <span className="font-bold text-slate-100 truncate max-w-[75px] sm:max-w-[170px]">
-                {fileName}
-              </span>
-              <span className="text-[10px] text-amber-300/90 font-mono hidden md:inline shrink-0">
-                · Zachód słońca
+            {/* Model Name Badge */}
+            <div
+              className="bg-slate-950/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-cyan-500/30 shadow-lg text-xs text-slate-200 flex items-center gap-1.5 shrink min-w-0"
+              title={fileName}
+            >
+              <Box className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="font-bold text-slate-100 font-mono text-[11px] truncate">
+                {formatShortFileName(fileName, 24)}
               </span>
             </div>
 
@@ -667,7 +668,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
                 type="button"
                 onClick={handleScreenshot}
                 onTouchStart={(e) => e.stopPropagation()}
-                title="Pobierz zdjęcie z zachodem słońca (PNG)"
+                title="Pobierz zdjęcie (PNG)"
                 className="p-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
@@ -702,16 +703,12 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
       </div>
 
       {/* Guide Banner for Mobile Player */}
-      <div className="bg-slate-900/80 rounded-xl border border-slate-800 p-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
+      <div className="bg-slate-900/80 rounded-xl border border-slate-800 p-3 flex items-center justify-between gap-3 text-xs text-slate-300">
         <div className="flex items-center gap-2">
           <Gamepad2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>
-            <strong>Lewy kciuk:</strong> Joystick (chodzenie po pagórkach) · <strong>Prawy kciuk:</strong> Obrót kamery, Skok i Bieg.
+            <strong>Lewy kciuk:</strong> Joystick (chodzenie) · <strong>Prawy kciuk:</strong> Obrót kamery, Skok i Bieg.
           </span>
-        </div>
-        <div className="text-amber-400 font-mono text-[11px] flex items-center gap-1.5">
-          <Sun className="w-3.5 h-3.5" />
-          Zachodzące słońce i zielone pagórki
         </div>
       </div>
     </div>

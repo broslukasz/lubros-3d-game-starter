@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, CheckCircle, AlertCircle, RefreshCw, Sparkles, Link as LinkIcon, Globe } from 'lucide-react';
 import { ModelStats } from '../types/three-app.ts';
+import { formatShortFileName } from '../utils/formatFileName.ts';
 
 interface FileUploadZoneProps {
   onFileSelected: (file: File) => void;
@@ -149,7 +150,9 @@ export const FileUploadZone: React.FC<FileUploadZoneProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-slate-100 text-sm">{currentStats.fileName}</span>
+                  <span className="font-semibold text-slate-100 text-sm font-mono" title={currentStats.fileName}>
+                    {formatShortFileName(currentStats.fileName, 34)}
+                  </span>
                   <span className="text-xs font-mono text-slate-400">({formatFileSize(currentStats.fileSizeBytes)})</span>
                   {isCustomDefault && (
                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">

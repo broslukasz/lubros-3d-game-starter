@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, FolderTree, Sparkles, HelpCircle, Smartphone, Gamepad2 } from 'lucide-react';
+import { formatShortFileName } from '../utils/formatFileName.ts';
 
 interface ProjectIntegrationGuideProps {
   fileName?: string;
@@ -164,7 +165,7 @@ useGLTF.preload('/${fileName}');`;
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-cyan-400" />
             <h2 className="text-lg font-bold text-slate-100">
-              Jak sterować modelem <span className="text-cyan-400 font-mono">{fileName}</span> we własnym kodzie?
+              Jak sterować modelem <span className="text-cyan-400 font-mono" title={fileName}>{formatShortFileName(fileName, 26)}</span> we własnym kodzie?
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
