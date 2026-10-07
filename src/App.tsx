@@ -3,7 +3,6 @@ import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Box } from 'lucide-react';
 import { FileUploadZone } from './components/FileUploadZone.tsx';
 import { GlbViewer } from './components/GlbViewer.tsx';
-import { ProjectIntegrationGuide } from './components/ProjectIntegrationGuide.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { loadGlbFromFile, loadGlbFromArrayBuffer, loadGlbFromUrl } from './utils/modelLoader.ts';
 import { createDemoScene } from './utils/demoModel.ts';
@@ -212,14 +211,6 @@ export default function App() {
               onToggleAutoRotate={() => setAutoRotate((prev) => !prev)}
             />
           </ErrorBoundary>
-        </section>
-
-        {/* Step 4: Step-by-Step Code Generator & Project Setup */}
-        <section>
-          <ProjectIntegrationGuide
-            fileName={modelStats?.fileName || 'twoj-model.glb'}
-            hasAnimations={(modelStats?.animationsCount || 0) > 0}
-          />
         </section>
       </main>
 
