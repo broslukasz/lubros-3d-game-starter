@@ -1,0 +1,6 @@
+{
+  "name": "FLV Video Studio & Web Player",
+  "description": "Odtwarzacz, analizator tagów binarnych i generator kodu do integracji plików Flash Video (FLV) w nowoczesnych aplikacjach webowych.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
