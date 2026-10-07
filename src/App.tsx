@@ -3,7 +3,6 @@ import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Box } from 'lucide-react';
 import { FileUploadZone } from './components/FileUploadZone.tsx';
 import { GlbViewer } from './components/GlbViewer.tsx';
-import { ModelStatsPanel } from './components/ModelStatsPanel.tsx';
 import { ProjectIntegrationGuide } from './components/ProjectIntegrationGuide.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { loadGlbFromFile, loadGlbFromArrayBuffer, loadGlbFromUrl } from './utils/modelLoader.ts';
@@ -213,9 +212,6 @@ export default function App() {
               onToggleAutoRotate={() => setAutoRotate((prev) => !prev)}
             />
           </ErrorBoundary>
-
-          {/* Step 3: Technical Metrics Panel */}
-          <ModelStatsPanel stats={modelStats} />
         </section>
 
         {/* Step 4: Step-by-Step Code Generator & Project Setup */}
