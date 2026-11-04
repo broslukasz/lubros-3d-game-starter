@@ -160,7 +160,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <img
               src="/icon-192.png"
-              alt="Święty Józef 3D"
+              alt="św. Józef"
               className="w-10 h-10 rounded-xl object-cover border border-cyan-500/40 shadow-md shadow-cyan-500/30 shrink-0"
             />
             <div>
