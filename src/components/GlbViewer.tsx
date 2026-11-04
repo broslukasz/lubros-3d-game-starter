@@ -6,10 +6,10 @@ import {
   Maximize2,
   Minimize2,
   Camera,
-  Layers,
   Gamepad2,
   Film,
   Box,
+  Check,
 } from 'lucide-react';
 import { getTerrainHeight, buildNatureEnvironment, resolveObstacleCollisions } from '../utils/terrainBuilder.ts';
 import { VirtualJoystick, JoystickVector } from './VirtualJoystick.tsx';
@@ -19,12 +19,6 @@ import { formatShortFileName } from '../utils/formatFileName.ts';
 interface GlbViewerProps {
   gltfData: GLTF | null;
   fileName?: string;
-  wireframe: boolean;
-  onToggleWireframe: () => void;
-  showGrid?: boolean;
-  onToggleGrid?: () => void;
-  autoRotate?: boolean;
-  onToggleAutoRotate?: () => void;
 }
 
 // Helper for shortest angle interpolation
@@ -37,8 +31,6 @@ function lerpAngle(start: number, end: number, t: number): number {
 export const GlbViewer: React.FC<GlbViewerProps> = ({
   gltfData,
   fileName = 'model.glb',
-  wireframe,
-  onToggleWireframe,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -72,6 +64,8 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [webglSupported, setWebglSupported] = useState<boolean>(true);
+  const [isShutterFlashing, setIsShutterFlashing] = useState<boolean>(false);
+  const [screenshotSuccess, setScreenshotSuccess] = useState<boolean>(false);
 
   // Character Skeletal Animation Controller (Walk / Run / Idle / Jump)
   const animControllerRef = useRef<CharacterAnimationController>(new CharacterAnimationController());
@@ -205,6 +199,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
         antialias: true,
         alpha: false,
         powerPreference: 'default',
+        preserveDrawingBuffer: true,
         failIfMajorPerformanceCaveat: false,
       });
       renderer.setSize(width, height);
@@ -221,6 +216,7 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
           canvas: canvasRef.current,
           antialias: false,
           powerPreference: 'default',
+          preserveDrawingBuffer: true,
           failIfMajorPerformanceCaveat: false,
         });
         renderer.setSize(width, height);
@@ -513,8 +509,6 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
             const mats = Array.isArray(child.material) ? child.material : [child.material];
             mats.forEach((m) => {
               if (m) {
-                m.wireframe = wireframe;
-
                 // Make base model slightly a mirror of surrounding space
                 if (m instanceof THREE.MeshStandardMaterial || (m as any).isMeshStandardMaterial) {
                   const stdMat = m as THREE.MeshStandardMaterial;
@@ -573,41 +567,62 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
     } catch (modelErr) {
       console.error('Error mounting model to scene:', modelErr);
     }
-  }, [gltfData, handleResetPosition, wireframe]);
+  }, [gltfData, handleResetPosition]);
 
-  // Update wireframe state on existing model
-  useEffect(() => {
-    if (!characterRootRef.current) return;
+  // Take Screenshot (Rock-solid on Desktop & Mobile Multitouch)
+  const handleScreenshot = useCallback(() => {
+    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
     try {
-      characterRootRef.current.traverse((child: THREE.Object3D) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          mats.forEach((m) => {
-            if (m) {
-              m.wireframe = wireframe;
-              m.needsUpdate = true;
-            }
-          });
-        }
-      });
-    } catch (e) {
-      console.warn('Could not update wireframe:', e);
-    }
-  }, [wireframe]);
+      // Trigger camera shutter flash effect
+      setIsShutterFlashing(true);
+      setTimeout(() => setIsShutterFlashing(false), 120);
 
-  // Take Screenshot
-  const handleScreenshot = () => {
-    if (!rendererRef.current) return;
-    try {
-      const dataUrl = rendererRef.current.domElement.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${fileName.replace(/\.[^/.]+$/, '')}_screenshot.png`;
-      link.href = dataUrl;
-      link.click();
+      // Re-render immediately before capturing buffer to guarantee non-blank image on desktop
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+      const canvas = rendererRef.current.domElement;
+      const cleanName = `${(fileName || 'model').replace(/\.[^/.]+$/, '')}_screenshot.png`;
+
+      const downloadBlob = (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = cleanName;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      };
+
+      if (canvas.toBlob) {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            downloadBlob(blob);
+          } else {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = cleanName;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }, 'image/png');
+      } else {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = cleanName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      setScreenshotSuccess(true);
+      setTimeout(() => setScreenshotSuccess(false), 1800);
     } catch (e) {
       console.error('Screenshot failed:', e);
     }
-  };
+  }, [fileName]);
 
   // Toggle Fullscreen
   const handleToggleFullscreen = () => {
@@ -687,34 +702,40 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
               <span className="text-[11px] font-bold">Start</span>
             </button>
 
-            {/* Quick Tools (Wireframe, Screenshot, Fullscreen - uncovered and fully accessible) */}
+            {/* Quick Tools (Screenshot, Fullscreen - uncovered and fully accessible) */}
             <div className="bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-700/70 shadow-lg flex items-center gap-1 shrink-0">
+              {/* Take Screenshot Button with instant multitouch support */}
               <button
                 type="button"
-                onClick={onToggleWireframe}
-                onTouchStart={(e) => e.stopPropagation()}
-                title="Tryb siatki (Wireframe)"
-                className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                  wireframe ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-slate-300 hover:text-white'
-                }`}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleScreenshot();
+                }}
+                onPointerDown={(e) => {
+                  if (e.pointerType === 'mouse') return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleScreenshot();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleScreenshot();
+                }}
+                title="Zrób zdjęcie (PNG)"
+                className="p-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition-colors cursor-pointer active:scale-90 flex items-center justify-center"
+                style={{ touchAction: 'none' }}
               >
-                <Layers className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleScreenshot}
-                onTouchStart={(e) => e.stopPropagation()}
-                title="Pobierz zdjęcie (PNG)"
-                className="p-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-4 h-4 text-cyan-400" />
               </button>
 
               <button
                 type="button"
                 onClick={handleToggleFullscreen}
-                onTouchStart={(e) => e.stopPropagation()}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  handleToggleFullscreen();
+                }}
                 title={isFullscreen ? 'Opuść pełny ekran' : 'Pełny ekran na telefonie'}
                 className="p-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
@@ -723,6 +744,20 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Visual Shutter Flash Feedback */}
+        {isShutterFlashing && (
+          <div className="absolute inset-0 bg-white/40 pointer-events-none z-40 transition-opacity" />
+        )}
+
+        {/* Screenshot Success Toast Notification */}
+        {screenshotSuccess && (
+          <div className="absolute top-14 right-3.5 z-40 bg-slate-900/95 border border-cyan-500/60 text-cyan-300 text-xs px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-2 animate-in fade-in select-none pointer-events-none">
+            <Camera className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="font-bold text-[11px] text-white">Zapisano zdjęcie!</span>
+            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          </div>
+        )}
 
         {/* Mobile Virtual Joystick & Touch Controller Overlay */}
         <VirtualJoystick

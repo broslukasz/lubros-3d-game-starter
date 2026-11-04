@@ -17,10 +17,6 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCustomDefault, setIsCustomDefault] = useState<boolean>(false);
 
-  // Viewer Toggles
-  const [wireframe, setWireframe] = useState<boolean>(false);
-  const [showGrid, setShowGrid] = useState<boolean>(true);
-  const [autoRotate, setAutoRotate] = useState<boolean>(false);
 
   // Initialize character: Check IndexedDB saved model -> Check public /model.glb -> Fallback to procedural demo
   useEffect(() => {
@@ -203,12 +199,6 @@ export default function App() {
             <GlbViewer
               gltfData={gltfData}
               fileName={modelStats?.fileName || 'model.glb'}
-              wireframe={wireframe}
-              onToggleWireframe={() => setWireframe((prev) => !prev)}
-              showGrid={showGrid}
-              onToggleGrid={() => setShowGrid((prev) => !prev)}
-              autoRotate={autoRotate}
-              onToggleAutoRotate={() => setAutoRotate((prev) => !prev)}
             />
           </ErrorBoundary>
         </section>
