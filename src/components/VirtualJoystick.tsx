@@ -63,6 +63,7 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
   // 1. Touch start on Joystick
   const handleJoystickTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (joystickTouchIdRef.current !== null) return;
 
     const touch = e.changedTouches[0];
@@ -96,15 +97,32 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
     onMove({ x: Number(normX.toFixed(2)), y: Number(normY.toFixed(2)) });
   };
 
-  // 2. Camera Touch Drag on right half of screen
+  // 2. Camera Touch Drag - works anywhere on screen (left to right, right to left, 360)
   const handleCameraTouchStart = (e: React.TouchEvent) => {
-    if (cameraTouchIdRef.current !== null) return;
-    const touch = e.changedTouches[0];
-    cameraTouchIdRef.current = touch.identifier;
-    lastCameraTouchPosRef.current = { x: touch.clientX, y: touch.clientY };
+    // If previous camera touch is no longer physically on screen, reset it
+    let isPrevActive = false;
+    if (cameraTouchIdRef.current !== null) {
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === cameraTouchIdRef.current) {
+          isPrevActive = true;
+          break;
+        }
+      }
+    }
+    if (isPrevActive) return;
+
+    // Pick first changed touch that is not already controlling the joystick
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (touch.identifier !== joystickTouchIdRef.current) {
+        cameraTouchIdRef.current = touch.identifier;
+        lastCameraTouchPosRef.current = { x: touch.clientX, y: touch.clientY };
+        break;
+      }
+    }
   };
 
-  // Global window listeners for tracking touches smoothly across screen
+  // Global window listeners for tracking touches smoothly across the whole screen
   useEffect(() => {
     const handleGlobalTouchMove = (e: TouchEvent) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
@@ -140,6 +158,17 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
           cameraTouchIdRef.current = null;
         }
       }
+
+      // Safety fallback: if all fingers lifted, reset all state
+      if (e.touches.length === 0) {
+        cameraTouchIdRef.current = null;
+        if (joystickTouchIdRef.current !== null) {
+          joystickTouchIdRef.current = null;
+          setIsJoystickActive(false);
+          setKnobPos({ x: 0, y: 0 });
+          onMove({ x: 0, y: 0 });
+        }
+      }
     };
 
     window.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
@@ -153,8 +182,36 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
     };
   }, [onMove, onCameraRotate]);
 
-  // Desktop Mouse Drag helper for testing
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Desktop Mouse Drag on Camera background
+  const isCameraMouseDownRef = useRef(false);
+  const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleCameraMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isCameraMouseDownRef.current = true;
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isCameraMouseDownRef.current) return;
+      const deltaX = ev.clientX - lastMousePosRef.current.x;
+      const deltaY = ev.clientY - lastMousePosRef.current.y;
+      lastMousePosRef.current = { x: ev.clientX, y: ev.clientY };
+      onCameraRotate(deltaX, deltaY);
+    };
+
+    const onMouseUp = () => {
+      isCameraMouseDownRef.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Desktop Mouse Drag helper for Joystick
+  const handleJoystickMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsJoystickActive(true);
     const onMouseMove = (ev: MouseEvent) => {
       updateJoystickKnob(ev.clientX, ev.clientY);
@@ -173,20 +230,26 @@ export const VirtualJoystick: React.FC<VirtualJoystickProps> = ({
 
   return (
     <div className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-end p-3 select-none touch-none">
-      {/* Middle: Right-half Camera Look Zone (Transparent touch surface) */}
+      {/* Full viewport Camera Drag Surface: captures touches & mouse swipe anywhere across the screen */}
       <div
         onTouchStart={handleCameraTouchStart}
-        className="absolute top-20 right-0 bottom-48 w-1/2 pointer-events-auto"
+        onMouseDown={handleCameraMouseDown}
+        className="absolute inset-0 pointer-events-auto z-0 touch-none select-none cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
       />
 
       {/* Bottom Controls Row: Joystick on Left, Jump & Sprint on Right */}
-      <div className="flex items-end justify-between w-full pointer-events-none pb-2">
+      <div className="relative z-10 flex items-end justify-between w-full pointer-events-none pb-2">
         {/* Left: Virtual Analog Joystick */}
-        <div className="pointer-events-auto flex flex-col items-center pl-1">
+        <div
+          onTouchStart={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="pointer-events-auto flex flex-col items-center pl-1"
+        >
           <div
             ref={joystickBaseRef}
             onTouchStart={handleJoystickTouchStart}
-            onMouseDown={handleMouseDown}
+            onMouseDown={handleJoystickMouseDown}
             className="relative w-32 h-32 rounded-full bg-slate-950/80 backdrop-blur-lg border-2 border-cyan-500/50 shadow-2xl flex items-center justify-center cursor-pointer active:border-cyan-400"
             style={{ touchAction: 'none' }}
           >
