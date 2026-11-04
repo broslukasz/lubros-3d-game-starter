@@ -373,17 +373,17 @@ export class CharacterAnimationController {
     const tracks: THREE.KeyframeTrack[] = [];
     const times = [0, 1.6, 3.2];
 
-    // 1. Left Upper Arm: Lowered by ~60° (not glued to body), tilted forward ~12°
+    // 1. Left Upper Arm: Lowered ~62° along torso, slightly neutral/back (-4°) so it rests behind the bag
     if (leftArm) {
       const qOrigL = leftArm.quaternion.clone();
-      const qDownL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-60 * Math.PI) / 180);
-      const qFwdL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (12 * Math.PI) / 180);
-      const qRelaxedL = qOrigL.clone().multiply(qDownL).multiply(qFwdL);
+      const qDownL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-62 * Math.PI) / 180);
+      const qBackL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-4 * Math.PI) / 180);
+      const qRelaxedL = qOrigL.clone().multiply(qDownL).multiply(qBackL);
 
       // Subtle breathing motion
       const qBreatheL = qRelaxedL
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.5 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.2 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${leftArm.name}.quaternion`, times, [
@@ -394,16 +394,16 @@ export class CharacterAnimationController {
       );
     }
 
-    // 2. Right Upper Arm: Lowered by ~60°, tilted forward ~10°
+    // 2. Right Upper Arm: Lowered ~60° along body with slight forward angle (6°)
     if (rightArm) {
       const qOrigR = rightArm.quaternion.clone();
       const qDownR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (60 * Math.PI) / 180);
-      const qFwdR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-10 * Math.PI) / 180);
+      const qFwdR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (6 * Math.PI) / 180);
       const qRelaxedR = qOrigR.clone().multiply(qDownR).multiply(qFwdR);
 
       const qBreatheR = qRelaxedR
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.5 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.2 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${rightArm.name}.quaternion`, times, [
@@ -414,16 +414,15 @@ export class CharacterAnimationController {
       );
     }
 
-    // 3. Left Forearm: Visible natural elbow flexion (~26° forward) + slight inward angle (~6°)
+    // 3. Left Forearm: Gentle bend (10°), positioned comfortably behind the bag
     if (leftForeArm) {
       const qOrigForeL = leftForeArm.quaternion.clone();
-      const qElbowL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (26 * Math.PI) / 180);
-      const qInL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (6 * Math.PI) / 180);
-      const qBentL = qOrigForeL.clone().multiply(qElbowL).multiply(qInL);
+      const qElbowL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (10 * Math.PI) / 180);
+      const qBentL = qOrigForeL.clone().multiply(qElbowL);
 
       const qBreatheForeL = qBentL
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.0 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (0.8 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${leftForeArm.name}.quaternion`, times, [
@@ -434,16 +433,15 @@ export class CharacterAnimationController {
       );
     }
 
-    // 4. Right Forearm: Visible natural elbow flexion (~35° forward) + slight inward angle (~-6°)
+    // 4. Right Forearm: Natural elbow bend (28°) along side of body
     if (rightForeArm) {
       const qOrigForeR = rightForeArm.quaternion.clone();
-      const qElbowR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (35 * Math.PI) / 180);
-      const qInR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (-6 * Math.PI) / 180);
-      const qBentR = qOrigForeR.clone().multiply(qElbowR).multiply(qInR);
+      const qElbowR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (28 * Math.PI) / 180);
+      const qBentR = qOrigForeR.clone().multiply(qElbowR);
 
       const qBreatheForeR = qBentR
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.0 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-0.8 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${rightForeArm.name}.quaternion`, times, [
@@ -454,12 +452,12 @@ export class CharacterAnimationController {
       );
     }
 
-    // 5. Wrists / Hands: Relaxed inward orientation next to thighs
+    // 5. Wrists / Hands: Natural relaxation
     if (leftHand) {
       const qOrigHandL = leftHand.quaternion.clone();
       const qRelaxHandL = qOrigHandL
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-10 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-6 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${leftHand.name}.quaternion`, times, [
@@ -474,7 +472,7 @@ export class CharacterAnimationController {
       const qOrigHandR = rightHand.quaternion.clone();
       const qRelaxHandR = qOrigHandR
         .clone()
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (10 * Math.PI) / 180));
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (8 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${rightHand.name}.quaternion`, times, [
