@@ -132,6 +132,12 @@ export class CharacterAnimationController {
       finalWalk = finalRun;
     }
 
+    // If model lacks an Idle animation clip, construct a natural Idle clip
+    // that lowers the arms gracefully along the torso with gentle breathing!
+    if (!finalIdle) {
+      finalIdle = this.createNaturalIdleClip(rootObject) || undefined;
+    }
+
     // Create AnimationActions
     if (finalIdle) {
       this.actions.idle = this.mixer.clipAction(finalIdle);
@@ -273,5 +279,121 @@ export class CharacterAnimationController {
       matchedClips: {},
       activeState: 'none',
     };
+  }
+
+  /**
+   * Constructs a natural standing Idle AnimationClip with lowered arms and subtle breathing
+   * for rigged characters (e.g. Mixamo / Meshy) that lack a dedicated idle animation.
+   */
+  private createNaturalIdleClip(rootObject: THREE.Object3D): THREE.AnimationClip | null {
+    let leftArm: THREE.Object3D | undefined;
+    let rightArm: THREE.Object3D | undefined;
+    let spine: THREE.Object3D | undefined;
+
+    rootObject.traverse((node) => {
+      const lower = node.name.toLowerCase();
+      // Match LeftArm (upper arm)
+      if (
+        !leftArm &&
+        (lower.includes('leftarm') ||
+          lower.includes('arm_l') ||
+          lower.includes('left_arm') ||
+          lower.includes('arm.l') ||
+          lower.includes('leftupperarm')) &&
+        !lower.includes('fore') &&
+        !lower.includes('hand')
+      ) {
+        leftArm = node;
+      }
+      // Match RightArm (upper arm)
+      if (
+        !rightArm &&
+        (lower.includes('rightarm') ||
+          lower.includes('arm_r') ||
+          lower.includes('right_arm') ||
+          lower.includes('arm.r') ||
+          lower.includes('rightupperarm')) &&
+        !lower.includes('fore') &&
+        !lower.includes('hand')
+      ) {
+        rightArm = node;
+      }
+      // Match Spine/Chest for subtle breathing
+      if (!spine && (lower.includes('spine2') || lower.includes('chest') || lower.includes('spine1'))) {
+        spine = node;
+      }
+    });
+
+    if (!leftArm && !rightArm) {
+      return null;
+    }
+
+    const tracks: THREE.KeyframeTrack[] = [];
+    const times = [0, 1.6, 3.2];
+
+    // Left Arm: Rotate ~68 degrees down along local Z, with subtle breathing sway
+    if (leftArm) {
+      const qOrig = leftArm.quaternion.clone();
+      const deltaQDown = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        (-68 * Math.PI) / 180
+      );
+      const qLowered = qOrig.clone().multiply(deltaQDown);
+
+      // Subtle breathing motion
+      const qBreathe = qLowered
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.5 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${leftArm.name}.quaternion`, times, [
+          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+          qBreathe.x, qBreathe.y, qBreathe.z, qBreathe.w,
+          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+        ])
+      );
+    }
+
+    // Right Arm: Rotate ~68 degrees down along local Z, with subtle breathing sway
+    if (rightArm) {
+      const qOrig = rightArm.quaternion.clone();
+      const deltaQDown = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        (68 * Math.PI) / 180
+      );
+      const qLowered = qOrig.clone().multiply(deltaQDown);
+
+      const qBreathe = qLowered
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.5 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${rightArm.name}.quaternion`, times, [
+          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+          qBreathe.x, qBreathe.y, qBreathe.z, qBreathe.w,
+          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+        ])
+      );
+    }
+
+    // Spine breathing expansion
+    if (spine) {
+      const qOrig = spine.quaternion.clone();
+      const qBreathe = qOrig
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.2 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${spine.name}.quaternion`, times, [
+          qOrig.x, qOrig.y, qOrig.z, qOrig.w,
+          qBreathe.x, qBreathe.y, qBreathe.z, qBreathe.w,
+          qOrig.x, qOrig.y, qOrig.z, qOrig.w,
+        ])
+      );
+    }
+
+    if (tracks.length === 0) return null;
+
+    return new THREE.AnimationClip('Spoczynek_OpuszczoneRece', 3.2, tracks);
   }
 }
