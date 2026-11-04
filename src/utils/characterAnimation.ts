@@ -282,12 +282,16 @@ export class CharacterAnimationController {
   }
 
   /**
-   * Constructs a natural standing Idle AnimationClip with lowered arms and subtle breathing
-   * for rigged characters (e.g. Mixamo / Meshy) that lack a dedicated idle animation.
+   * Constructs a natural standing Idle AnimationClip with lowered arms, clear elbow flexion (bend),
+   * relaxed wrists, and subtle breathing for rigged characters lacking an idle animation.
    */
   private createNaturalIdleClip(rootObject: THREE.Object3D): THREE.AnimationClip | null {
     let leftArm: THREE.Object3D | undefined;
     let rightArm: THREE.Object3D | undefined;
+    let leftForeArm: THREE.Object3D | undefined;
+    let rightForeArm: THREE.Object3D | undefined;
+    let leftHand: THREE.Object3D | undefined;
+    let rightHand: THREE.Object3D | undefined;
     let spine: THREE.Object3D | undefined;
 
     rootObject.traverse((node) => {
@@ -318,6 +322,44 @@ export class CharacterAnimationController {
       ) {
         rightArm = node;
       }
+      // Match ForeArms (elbows)
+      if (
+        !leftForeArm &&
+        (lower.includes('leftforearm') ||
+          lower.includes('forearm_l') ||
+          lower.includes('left_forearm') ||
+          lower.includes('lowerarm_l'))
+      ) {
+        leftForeArm = node;
+      }
+      if (
+        !rightForeArm &&
+        (lower.includes('rightforearm') ||
+          lower.includes('forearm_r') ||
+          lower.includes('right_forearm') ||
+          lower.includes('lowerarm_r'))
+      ) {
+        rightForeArm = node;
+      }
+      // Match Hands / Wrists
+      if (
+        !leftHand &&
+        (lower.includes('lefthand') || lower.includes('hand_l') || lower.includes('left_hand')) &&
+        !lower.includes('middle') &&
+        !lower.includes('thumb') &&
+        !lower.includes('index')
+      ) {
+        leftHand = node;
+      }
+      if (
+        !rightHand &&
+        (lower.includes('righthand') || lower.includes('hand_r') || lower.includes('right_hand')) &&
+        !lower.includes('middle') &&
+        !lower.includes('thumb') &&
+        !lower.includes('index')
+      ) {
+        rightHand = node;
+      }
       // Match Spine/Chest for subtle breathing
       if (!spine && (lower.includes('spine2') || lower.includes('chest') || lower.includes('spine1'))) {
         spine = node;
@@ -331,52 +373,119 @@ export class CharacterAnimationController {
     const tracks: THREE.KeyframeTrack[] = [];
     const times = [0, 1.6, 3.2];
 
-    // Left Arm: Rotate ~68 degrees down along local Z, with subtle breathing sway
+    // 1. Left Upper Arm: Lowered by ~60° (not glued to body), tilted forward ~12°
     if (leftArm) {
-      const qOrig = leftArm.quaternion.clone();
-      const deltaQDown = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 0, 1),
-        (-68 * Math.PI) / 180
-      );
-      const qLowered = qOrig.clone().multiply(deltaQDown);
+      const qOrigL = leftArm.quaternion.clone();
+      const qDownL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-60 * Math.PI) / 180);
+      const qFwdL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (12 * Math.PI) / 180);
+      const qRelaxedL = qOrigL.clone().multiply(qDownL).multiply(qFwdL);
 
       // Subtle breathing motion
-      const qBreathe = qLowered
+      const qBreatheL = qRelaxedL
         .clone()
         .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.5 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${leftArm.name}.quaternion`, times, [
-          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
-          qBreathe.x, qBreathe.y, qBreathe.z, qBreathe.w,
-          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+          qRelaxedL.x, qRelaxedL.y, qRelaxedL.z, qRelaxedL.w,
+          qBreatheL.x, qBreatheL.y, qBreatheL.z, qBreatheL.w,
+          qRelaxedL.x, qRelaxedL.y, qRelaxedL.z, qRelaxedL.w,
         ])
       );
     }
 
-    // Right Arm: Rotate ~68 degrees down along local Z, with subtle breathing sway
+    // 2. Right Upper Arm: Lowered by ~60°, tilted forward ~10°
     if (rightArm) {
-      const qOrig = rightArm.quaternion.clone();
-      const deltaQDown = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 0, 1),
-        (68 * Math.PI) / 180
-      );
-      const qLowered = qOrig.clone().multiply(deltaQDown);
+      const qOrigR = rightArm.quaternion.clone();
+      const qDownR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (60 * Math.PI) / 180);
+      const qFwdR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-10 * Math.PI) / 180);
+      const qRelaxedR = qOrigR.clone().multiply(qDownR).multiply(qFwdR);
 
-      const qBreathe = qLowered
+      const qBreatheR = qRelaxedR
         .clone()
         .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.5 * Math.PI) / 180));
 
       tracks.push(
         new THREE.QuaternionKeyframeTrack(`${rightArm.name}.quaternion`, times, [
-          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
-          qBreathe.x, qBreathe.y, qBreathe.z, qBreathe.w,
-          qLowered.x, qLowered.y, qLowered.z, qLowered.w,
+          qRelaxedR.x, qRelaxedR.y, qRelaxedR.z, qRelaxedR.w,
+          qBreatheR.x, qBreatheR.y, qBreatheR.z, qBreatheR.w,
+          qRelaxedR.x, qRelaxedR.y, qRelaxedR.z, qRelaxedR.w,
         ])
       );
     }
 
-    // Spine breathing expansion
+    // 3. Left Forearm: Visible natural elbow flexion (~26° forward) + slight inward angle (~6°)
+    if (leftForeArm) {
+      const qOrigForeL = leftForeArm.quaternion.clone();
+      const qElbowL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (26 * Math.PI) / 180);
+      const qInL = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (6 * Math.PI) / 180);
+      const qBentL = qOrigForeL.clone().multiply(qElbowL).multiply(qInL);
+
+      const qBreatheForeL = qBentL
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (1.0 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${leftForeArm.name}.quaternion`, times, [
+          qBentL.x, qBentL.y, qBentL.z, qBentL.w,
+          qBreatheForeL.x, qBreatheForeL.y, qBreatheForeL.z, qBreatheForeL.w,
+          qBentL.x, qBentL.y, qBentL.z, qBentL.w,
+        ])
+      );
+    }
+
+    // 4. Right Forearm: Visible natural elbow flexion (~35° forward) + slight inward angle (~-6°)
+    if (rightForeArm) {
+      const qOrigForeR = rightForeArm.quaternion.clone();
+      const qElbowR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (35 * Math.PI) / 180);
+      const qInR = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (-6 * Math.PI) / 180);
+      const qBentR = qOrigForeR.clone().multiply(qElbowR).multiply(qInR);
+
+      const qBreatheForeR = qBentR
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), (-1.0 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${rightForeArm.name}.quaternion`, times, [
+          qBentR.x, qBentR.y, qBentR.z, qBentR.w,
+          qBreatheForeR.x, qBreatheForeR.y, qBreatheForeR.z, qBreatheForeR.w,
+          qBentR.x, qBentR.y, qBentR.z, qBentR.w,
+        ])
+      );
+    }
+
+    // 5. Wrists / Hands: Relaxed inward orientation next to thighs
+    if (leftHand) {
+      const qOrigHandL = leftHand.quaternion.clone();
+      const qRelaxHandL = qOrigHandL
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (-10 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${leftHand.name}.quaternion`, times, [
+          qRelaxHandL.x, qRelaxHandL.y, qRelaxHandL.z, qRelaxHandL.w,
+          qRelaxHandL.x, qRelaxHandL.y, qRelaxHandL.z, qRelaxHandL.w,
+          qRelaxHandL.x, qRelaxHandL.y, qRelaxHandL.z, qRelaxHandL.w,
+        ])
+      );
+    }
+
+    if (rightHand) {
+      const qOrigHandR = rightHand.quaternion.clone();
+      const qRelaxHandR = qOrigHandR
+        .clone()
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (10 * Math.PI) / 180));
+
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(`${rightHand.name}.quaternion`, times, [
+          qRelaxHandR.x, qRelaxHandR.y, qRelaxHandR.z, qRelaxHandR.w,
+          qRelaxHandR.x, qRelaxHandR.y, qRelaxHandR.z, qRelaxHandR.w,
+          qRelaxHandR.x, qRelaxHandR.y, qRelaxHandR.z, qRelaxHandR.w,
+        ])
+      );
+    }
+
+    // 6. Spine: Subtle breathing expansion
     if (spine) {
       const qOrig = spine.quaternion.clone();
       const qBreathe = qOrig
@@ -394,6 +503,6 @@ export class CharacterAnimationController {
 
     if (tracks.length === 0) return null;
 
-    return new THREE.AnimationClip('Spoczynek_OpuszczoneRece', 3.2, tracks);
+    return new THREE.AnimationClip('Spoczynek_NaturalneRece', 3.2, tracks);
   }
 }
