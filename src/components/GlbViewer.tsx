@@ -10,11 +10,14 @@ import {
   Gamepad2,
   Film,
   Box,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { getTerrainHeight, buildNatureEnvironment, resolveObstacleCollisions } from '../utils/terrainBuilder.ts';
 import { VirtualJoystick, JoystickVector } from './VirtualJoystick.tsx';
 import { CharacterAnimationController, AnimationDetectionInfo } from '../utils/characterAnimation.ts';
 import { formatShortFileName } from '../utils/formatFileName.ts';
+import { AnimationPanel } from './AnimationPanel.tsx';
 
 interface GlbViewerProps {
   gltfData: GLTF | null;
@@ -76,6 +79,28 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
   // Character Skeletal Animation Controller (Walk / Run / Idle / Jump)
   const animControllerRef = useRef<CharacterAnimationController>(new CharacterAnimationController());
   const [animInfo, setAnimInfo] = useState<AnimationDetectionInfo | null>(null);
+  const [showAnimationModal, setShowAnimationModal] = useState<boolean>(false);
+
+  // Show Animation Panel Handlers
+  const handlePlayClip = useCallback((name: string, speed = 1.0, loop = true) => {
+    animControllerRef.current.playClip(name, speed, loop);
+    setAnimInfo({ ...animControllerRef.current.getInfo() });
+  }, []);
+
+  const handleStopCustom = useCallback(() => {
+    animControllerRef.current.stopCustomAnimation();
+    setAnimInfo({ ...animControllerRef.current.getInfo() });
+  }, []);
+
+  const handleTogglePause = useCallback(() => {
+    animControllerRef.current.togglePause();
+    setAnimInfo({ ...animControllerRef.current.getInfo() });
+  }, []);
+
+  const handleChangeSpeed = useCallback((speed: number) => {
+    animControllerRef.current.setPlaybackSpeed(speed);
+    setAnimInfo({ ...animControllerRef.current.getInfo() });
+  }, []);
 
   // Prevent default window drag/drop
   useEffect(() => {
@@ -656,11 +681,14 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
               </span>
             </div>
 
-            {/* Locomotion Animation Badge */}
+            {/* Locomotion Animation Badge (Clickable to open Show Animation) */}
             {animInfo?.hasAnimations && (
-              <div
-                className="bg-emerald-950/90 backdrop-blur-md px-2 py-1.5 rounded-xl border border-emerald-500/50 shadow-lg text-xs text-emerald-300 flex items-center gap-1 shrink-0 transition-all"
-                title={`Wykryto animacje modelu: ${animInfo.clips.join(', ')}`}
+              <button
+                type="button"
+                onClick={() => setShowAnimationModal(true)}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="bg-emerald-950/90 hover:bg-emerald-900/90 backdrop-blur-md px-2 py-1.5 rounded-xl border border-emerald-500/50 shadow-lg text-xs text-emerald-300 flex items-center gap-1 shrink-0 transition-all cursor-pointer"
+                title={`Wykryto animacje modelu: ${animInfo.clips.join(', ')}. Kliknij, aby otworzyć panel animacji.`}
               >
                 <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="font-semibold hidden md:inline text-[11px]">
@@ -669,12 +697,33 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
                 <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-[10px] font-mono text-emerald-300 font-bold shrink-0">
                   {animInfo.clipCount} {animInfo.clipCount === 1 ? 'klip' : 'klipy'}
                 </span>
-              </div>
+              </button>
             )}
           </div>
 
           {/* Right Action Buttons (Always fully visible, shrink-0, never covered or cut off) */}
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
+            {/* Show Animation Button */}
+            <button
+              type="button"
+              onClick={() => setShowAnimationModal(true)}
+              onTouchStart={(e) => e.stopPropagation()}
+              title="Otwórz menu animacji postaci (Show Animation)"
+              className={`px-2.5 py-1.5 rounded-xl backdrop-blur-md border text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all shrink-0 cursor-pointer ${
+                animInfo?.isCustomPlaying
+                  ? 'bg-emerald-600 border-emerald-400 text-white shadow-emerald-500/30 ring-2 ring-emerald-400/50'
+                  : 'bg-slate-950/90 border-emerald-500/50 text-emerald-300 hover:text-white hover:bg-emerald-950/80 hover:border-emerald-400'
+              }`}
+            >
+              <Film className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="text-[11px] font-bold">Show Animation</span>
+              {animInfo?.clipCount !== undefined && animInfo.clipCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300 font-bold shrink-0">
+                  {animInfo.clipCount}
+                </span>
+              )}
+            </button>
+
             {/* Start (Reset Position) Button */}
             <button
               type="button"
@@ -740,14 +789,39 @@ export const GlbViewer: React.FC<GlbViewerProps> = ({
       </div>
 
       {/* Guide Banner for Mobile Player */}
-      <div className="bg-slate-900/80 rounded-xl border border-slate-800 p-3 flex items-center justify-between gap-3 text-xs text-slate-300">
+      <div className="bg-slate-900/80 rounded-xl border border-slate-800 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-300">
         <div className="flex items-center gap-2">
           <Gamepad2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>
             <strong>Lewy kciuk:</strong> Joystick (chodzenie) · <strong>Prawy kciuk:</strong> Obrót kamery, Skok i Bieg.
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAnimationModal(true)}
+          className="self-end sm:self-auto px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 font-semibold text-[11px] cursor-pointer transition-colors shrink-0"
+        >
+          <Film className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Show Animation ({animInfo?.clipCount || 0})</span>
+        </button>
       </div>
+
+      {/* Show Animation Modal */}
+      <AnimationPanel
+        isOpen={showAnimationModal}
+        onClose={() => setShowAnimationModal(false)}
+        clips={animInfo?.clipDetails || []}
+        activeClipName={animInfo?.activeClipName}
+        isCustomPlaying={!!animInfo?.isCustomPlaying}
+        playbackSpeed={animInfo?.playbackSpeed || 1.0}
+        isPaused={!!animInfo?.isPaused}
+        onPlayClip={handlePlayClip}
+        onStopCustom={handleStopCustom}
+        onTogglePause={handleTogglePause}
+        onChangeSpeed={handleChangeSpeed}
+        modelName={formatShortFileName(fileName, 24)}
+      />
     </div>
   );
 };
