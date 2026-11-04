@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Święty Józef 3D",
-  "short_name": "Św. Józef",
-  "description": "Interaktywny model postaci 3D Świętego Józefa z fizyką poruszania, skakania i eksploracji krajobrazu.",
+  "name": "3D Book character",
+  "short_name": "3D Book",
+  "description": "Interaktywny model postaci 3D Book character z fizyką poruszania, skakania i eksploracji krajobrazu.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
