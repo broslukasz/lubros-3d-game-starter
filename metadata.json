@@ -1,6 +1,6 @@
 {
-  "name": "FLV Video Studio & Web Player",
-  "description": "Odtwarzacz, analizator tagów binarnych i generator kodu do integracji plików Flash Video (FLV) w nowoczesnych aplikacjach webowych.",
+  "name": "3D character game starter",
+  "description": "Interaktywny starter gry 3D z fizyką postaci, skakaniem, bieganiem i eksploracją otoczenia Three.js.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
